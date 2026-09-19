@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Heist Awareness HUD</title>
+<style>
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+
+  #hud {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    width: 210px;
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  #hud.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  #label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+
+  #label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.70);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+
+  #state-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: rgba(0,0,0,0.35);
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+    transition: background 0.4s ease, color 0.4s ease;
+  }
+
+  #bar-track {
+    width: 100%;
+    height: 7px;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+  }
+
+  #bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 4px;
+    background: #4cde80;
+    transition: width 0.4s ease, background 0.4s ease, box-shadow 0.4s ease;
+    box-shadow: 0 0 6px 0 rgba(76, 222, 128, 0.55);
+  }
+
+  @keyframes pulse {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.60; }
+    100% { opacity: 1; }
+  }
+
+  #bar-fill.pulse {
+    animation: pulse 0.7s ease-in-out infinite;
+  }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div id="label-row">
+    <span id="label">GUARD AWARENESS</span>
+    <span id="state-badge">CLEAR</span>
+  </div>
+  <div id="bar-track">
+    <div id="bar-fill"></div>
+  </div>
+</div>
+
+<script>
+  const hud       = document.getElementById('hud');
+  const fill      = document.getElementById('bar-fill');
+  const badge     = document.getElementById('state-badge');
+
+  const STATE_LABELS = {
+    idle:       'CLEAR',
+    suspicious: 'SUSPICIOUS',
+    alert:      'ALERT',
+    hostile:    'HOSTILE',
+  };
+
+  function getColour(value) {
+    if (value >= 85) return { bar: '#ff3b30', glow: 'rgba(255,59,48,0.65)',  badge: '#c0392b' };
+    if (value >= 60) return { bar: '#ff9f0a', glow: 'rgba(255,159,10,0.60)', badge: '#d68910' };
+    if (value >= 30) return { bar: '#ffd60a', glow: 'rgba(255,214,10,0.55)', badge: '#b7950b' };
+    return              { bar: '#4cde80', glow: 'rgba(76,222,128,0.55)',  badge: '#1e8449' };
+  }
+
+  function update(value, state, visible) {
+    hud.classList.toggle('visible', !!visible);
+    if (!visible) return;
+
+    const pct    = Math.min(100, Math.max(0, value));
+    const colour = getColour(pct);
+
+    fill.style.width      = pct + '%';
+    fill.style.background = colour.bar;
+    fill.style.boxShadow  = `0 0 8px 0 ${colour.glow}`;
+
+    fill.classList.toggle('pulse', state === 'hostile');
+
+    badge.textContent      = STATE_LABELS[state] || 'CLEAR';
+    badge.style.background = colour.badge;
+  }
+
+  window.addEventListener('message', function(event) {
+    const data = event.data;
+    if (!data || data.type !== 'awareness') return;
+    update(data.value ?? 0, data.state ?? 'idle', data.visible ?? false);
+  });
+</script>
+</body>
+</html>
